@@ -43,10 +43,28 @@ clang \
     "${SOURCES[@]}" \
     -o "${MACOS_DIR}/${APP_NAME}"
 
-# Copy Info.plist
+# Copy Info.plist and icon
 echo "Packaging application bundle..."
 cp "Resources/Info.plist" "${CONTENTS_DIR}/Info.plist"
 echo "APPL????" > "${CONTENTS_DIR}/PkgInfo"
+
+# Generate / copy AppIcon.icns
+echo "Generating AppIcon PNGs into xcassets..."
+clang -fobjc-arc -framework Cocoa -framework CoreGraphics \
+    -o /tmp/gen_icon scripts/gen_icon.m
+/tmp/gen_icon "Resources/AppIcon.xcassets/AppIcon.appiconset"
+
+echo "Compiling AppIcon.xcassets with actool..."
+xcrun actool \
+    --output-format human-readable-text \
+    --notices --warnings \
+    --platform macosx \
+    --minimum-deployment-target 12.0 \
+    --target-device mac \
+    --app-icon AppIcon \
+    --output-partial-info-plist /tmp/actool-partial.plist \
+    --compile "${RESOURCES_DIR}" \
+    "Resources/AppIcon.xcassets"
 
 # Ad-hoc codesign
 echo "Ad-hoc code signing..."
