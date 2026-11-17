@@ -1,9 +1,15 @@
-name: Build and Release Xcode Binary
+name: Build and Release macOS App
 
 on:
   push:
     tags:
       - 'v*' # Triggers when pushing tags like v1.0.0
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and attach release assets to (e.g. v1.0.0)'
+        required: true
+        type: string
 
 permissions:
   contents: write # Required to create releases and upload assets
@@ -11,8 +17,11 @@ permissions:
 env:
   PROJECT_FILE: DilutionCryofreeSimulator.xcodeproj
   SCHEME: DilutionCryofreeSimulator
-  APP_NAME: Dilution Cryofree Simulator
-  BINARY_NAME: Dilution Cryofree Simulator
+  # PRODUCT_NAME = $(TARGET_NAME), so the bundle and executable are the target name.
+  APP_NAME: DilutionCryofreeSimulator
+  BINARY_NAME: DilutionCryofreeSimulator
+  # Name used for the downloadable assets.
+  ASSET_NAME: dilution-cryofree-simulator
   CONFIGURATION: Release
 
 jobs:
@@ -20,13 +29,17 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
-      - name: Install XcodeGen and regenerate project
+      - name: Show toolchain versions
         run: |
-          brew install xcodegen
-          xcodegen generate
+          xcodebuild -version
+          sw_vers
 
+      # The .xcodeproj is committed to the repo, so no project generation
+      # (XcodeGen/Tuist) step is needed.
       - name: Build (Release)
         run: |
           xcodebuild \
@@ -45,19 +58,26 @@ jobs:
           BINARY_PATH="$APP_PATH/Contents/MacOS/$BINARY_NAME"
           test -d "$APP_PATH"
           test -f "$BINARY_PATH"
-          VERSION="${GITHUB_REF_NAME#v}"
+
+          # Ad-hoc sign the bundle so the downloaded app is properly sealed.
+          codesign --force --deep --sign - "$APP_PATH"
+          codesign --verify --deep --strict "$APP_PATH"
+
+          VERSION="${{ inputs.tag || github.ref_name }}"
+          VERSION="${VERSION#v}"
 
           # 1. Zip the compiled .app bundle
-          ditto -c -k --keepParent "$APP_PATH" "$BINARY_NAME-$VERSION-macos.zip"
+          ditto -c -k --keepParent "$APP_PATH" "$ASSET_NAME-$VERSION-macos.zip"
 
           # 2. Create a clean source code .tar.gz from Git HEAD
-          git archive --format=tar.gz --prefix="$BINARY_NAME-$VERSION/" -o "$BINARY_NAME-$VERSION-source.tar.gz" HEAD
+          git archive --format=tar.gz --prefix="$ASSET_NAME-$VERSION/" -o "$ASSET_NAME-$VERSION-source.tar.gz" HEAD
 
       - name: Create GitHub Release and Upload Assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           files: |
-            ${{ env.BINARY_NAME }}-*-macos.zip
-            ${{ env.BINARY_NAME }}-*-source.tar.gz
+            ${{ env.ASSET_NAME }}-*-macos.zip
+            ${{ env.ASSET_NAME }}-*-source.tar.gz
           generate_release_notes: true
           fail_on_unmatched_files: true
