@@ -11,8 +11,8 @@ permissions:
 env:
   PROJECT_FILE: DilutionCryofreeSimulator.xcodeproj
   SCHEME: DilutionCryofreeSimulator
-  APP_NAME: dilution-cryofree-simulator
-  BINARY_NAME: dilution-cryofree-simulator
+  APP_NAME: Dilution Cryofree Simulator
+  BINARY_NAME: Dilution Cryofree Simulator
   CONFIGURATION: Release
 
 jobs:
