@@ -19,7 +19,7 @@ env:
   SCHEME: DilutionCryofreeSimulator
   # PRODUCT_NAME = $(TARGET_NAME), so the bundle and executable are the target name.
   APP_NAME: DilutionCryofreeSimulator
-  BINARY_NAME: DilutionCryofreeSimulator
+  BINARY_NAME: Dilution Cryofree Simulator
   # Name used for the downloadable assets.
   ASSET_NAME: dilution-cryofree-simulator
   CONFIGURATION: Release
